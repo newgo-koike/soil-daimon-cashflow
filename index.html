@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soil大門 キャッシュフローシミュレーション</title>
+<style>
+  :root {
+    --primary: #2c3e50;
+    --accent: #3498db;
+    --positive: #27ae60;
+    --negative: #e74c3c;
+    --bg: #f8f9fa;
+    --card: #ffffff;
+    --border: #dee2e6;
+    --text: #333;
+    --text-light: #6c757d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  h1 {
+    text-align: center;
+    color: var(--primary);
+    font-size: 1.6em;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--text-light);
+    font-size: 0.9em;
+    margin-bottom: 24px;
+  }
+
+  /* Summary Cards */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .summary-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    text-align: center;
+  }
+  .summary-card .label {
+    font-size: 0.8em;
+    color: var(--text-light);
+    margin-bottom: 4px;
+  }
+  .summary-card .value {
+    font-size: 1.5em;
+    font-weight: 700;
+  }
+  .summary-card .sub {
+    font-size: 0.75em;
+    color: var(--text-light);
+    margin-top: 4px;
+  }
+  .positive { color: var(--positive); }
+  .negative { color: var(--negative); }
+
+  /* Input Section */
+  .input-section {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .input-section h2 {
+    font-size: 1.1em;
+    color: var(--primary);
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 8px;
+  }
+  .input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .input-group { display: flex; flex-direction: column; gap: 4px; }
+  .input-group label {
+    font-size: 0.8em;
+    color: var(--text-light);
+    font-weight: 600;
+  }
+  .input-group input {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1em;
+    text-align: right;
+    transition: border-color 0.2s;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+  }
+  .input-group .unit {
+    font-size: 0.75em;
+    color: var(--text-light);
+  }
+  .btn-calc {
+    display: block;
+    margin: 20px auto 0;
+    padding: 10px 40px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-calc:hover { background: #2980b9; }
+
+  /* Tables */
+  .table-section {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow-x: auto;
+  }
+  .table-section h2 {
+    font-size: 1.1em;
+    color: var(--primary);
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+  }
+  th {
+    background: var(--primary);
+    color: #fff;
+    padding: 10px 12px;
+    text-align: right;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  th:first-child { text-align: center; border-radius: 8px 0 0 0; }
+  th:last-child { border-radius: 0 8px 0 0; }
+  td {
+    padding: 8px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td:first-child { text-align: center; font-weight: 600; }
+  tr:nth-child(even) { background: #f4f6f8; }
+  tr:hover { background: #eef2f7; }
+  tr.year-total {
+    background: #e8f4f8 !important;
+    font-weight: 700;
+  }
+  tr.breakeven { background: #e8f8e8 !important; }
+
+  /* Chart */
+  .chart-container {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .chart-container h2 {
+    font-size: 1.1em;
+    color: var(--primary);
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 8px;
+  }
+  canvas { width: 100% !important; max-height: 400px; }
+
+  /* Loan detail */
+  .loan-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .loan-box {
+    background: #f4f6f8;
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .loan-box h3 {
+    font-size: 0.9em;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+  .loan-box .detail {
+    font-size: 0.8em;
+    color: var(--text-light);
+    margin-bottom: 4px;
+  }
+  .loan-box .amount {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .footer {
+    text-align: center;
+    color: var(--text-light);
+    font-size: 0.75em;
+    padding: 20px;
+  }
+
+  @media (max-width: 600px) {
+    .loan-summary { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+    table { font-size: 0.75em; }
+    td, th { padding: 6px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Soil大門 キャッシュフローシミュレーション</h1>
+  <p class="subtitle">10年間の収支見通し</p>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid" id="summaryCards">
+    <div class="summary-card">
+      <div class="label">月間キャッシュフロー</div>
+      <div class="value" id="s_monthly_cf">-</div>
+      <div class="sub">返済後の手残り（当初）</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">月間返済額合計</div>
+      <div class="value" id="s_monthly_repay">-</div>
+      <div class="sub">2本のローン合計</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">返済比率</div>
+      <div class="value" id="s_dscr">-</div>
+      <div class="sub">返済額 / 家賃収入</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">10年間累計CF</div>
+      <div class="value" id="s_total_cf">-</div>
+      <div class="sub">10年間の手残り合計</div>
+    </div>
+  </div>
+
+  <!-- Input Parameters -->
+  <div class="input-section">
+    <h2>前提条件</h2>
+    <div class="input-grid">
+      <div class="input-group">
+        <label>初期費用総額 <span class="unit">(円)</span></label>
+        <input type="text" id="totalCost" value="23,308,951">
+      </div>
+      <div class="input-group">
+        <label>うち内装費 <span class="unit">(円・5年返済)</span></label>
+        <input type="text" id="interiorCost" value="1,980,000">
+      </div>
+      <div class="input-group">
+        <label>その他費用 <span class="unit">(円・20年返済)</span></label>
+        <input type="text" id="otherCost" value="21,328,951" readonly style="background:#f0f0f0;">
+      </div>
+      <div class="input-group">
+        <label>金利 <span class="unit">(%)</span></label>
+        <input type="text" id="interestRate" value="2.2">
+      </div>
+      <div class="input-group">
+        <label>月額家賃収入 <span class="unit">(円)</span></label>
+        <input type="text" id="monthlyRent" value="200,000">
+      </div>
+      <div class="input-group">
+        <label>月額運営諸費用 <span class="unit">(円・固定資産税等)</span></label>
+        <input type="text" id="monthlyExpense" value="15,000">
+      </div>
+      <div class="input-group">
+        <label>月額修繕積立金 <span class="unit">(円)</span></label>
+        <input type="text" id="monthlyRepairReserve" value="12,000">
+      </div>
+      <div class="input-group">
+        <label>空室率 <span class="unit">(%)</span></label>
+        <input type="text" id="vacancyRate" value="0">
+      </div>
+      <div class="input-group">
+        <label>年間家賃上昇率 <span class="unit">(%)</span></label>
+        <input type="text" id="rentIncrease" value="0">
+      </div>
+    </div>
+    <button class="btn-calc" onclick="calculate()">再計算</button>
+  </div>
+
+  <!-- Loan Summary -->
+  <div class="input-section">
+    <h2>融資条件</h2>
+    <div class="loan-summary">
+      <div class="loan-box">
+        <h3>ローンA: 内装費</h3>
+        <div class="detail">借入額: <span id="loanA_amount">-</span></div>
+        <div class="detail">期間: 5年（60回）/ 金利: <span id="loanA_rate">-</span>%</div>
+        <div class="detail">月額返済: <span class="amount" id="loanA_monthly">-</span></div>
+        <div class="detail">総返済額: <span id="loanA_total">-</span></div>
+        <div class="detail">うち利息: <span id="loanA_interest">-</span></div>
+      </div>
+      <div class="loan-box">
+        <h3>ローンB: その他</h3>
+        <div class="detail">借入額: <span id="loanB_amount">-</span></div>
+        <div class="detail">期間: 20年（240回）/ 金利: <span id="loanB_rate">-</span>%</div>
+        <div class="detail">月額返済: <span class="amount" id="loanB_monthly">-</span></div>
+        <div class="detail">総返済額: <span id="loanB_total">-</span></div>
+        <div class="detail">うち利息: <span id="loanB_interest">-</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-container">
+    <h2>年間キャッシュフロー推移</h2>
+    <canvas id="cfChart"></canvas>
+  </div>
+
+  <!-- Annual Table -->
+  <div class="table-section">
+    <h2>年間キャッシュフロー一覧</h2>
+    <table id="annualTable">
+      <thead>
+        <tr>
+          <th>年</th>
+          <th>家賃収入</th>
+          <th>運営費</th>
+          <th>修繕積立</th>
+          <th>ローンA返済</th>
+          <th>ローンB返済</th>
+          <th>返済合計</th>
+          <th>年間CF</th>
+          <th>累計CF</th>
+        </tr>
+      </thead>
+      <tbody id="annualBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Monthly Table -->
+  <div class="table-section">
+    <h2>月別キャッシュフロー詳細（最初の5年）</h2>
+    <table id="monthlyTable">
+      <thead>
+        <tr>
+          <th>年月</th>
+          <th>家賃収入</th>
+          <th>運営費</th>
+          <th>修繕積立</th>
+          <th>ローンA</th>
+          <th>ローンB</th>
+          <th>返済合計</th>
+          <th>月間CF</th>
+          <th>累計CF</th>
+        </tr>
+      </thead>
+      <tbody id="monthlyBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Loan Amortization -->
+  <div class="table-section">
+    <h2>ローン返済スケジュール（年別）</h2>
+    <table id="amortTable">
+      <thead>
+        <tr>
+          <th>年</th>
+          <th>A元金</th>
+          <th>A利息</th>
+          <th>A残高</th>
+          <th>B元金</th>
+          <th>B利息</th>
+          <th>B残高</th>
+          <th>合計返済</th>
+        </tr>
+      </thead>
+      <tbody id="amortBody"></tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    Soil大門 キャッシュフローシミュレーション | 作成日: <span id="createdDate"></span><br>
+    ※ 本シミュレーションは概算です。実際の収支は条件により異なります。
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+function parseNum(str) {
+  return Number(String(str).replace(/[,\s円%]/g, '')) || 0;
+}
+function fmt(n) {
+  return Math.round(n).toLocaleString('ja-JP');
+}
+function fmtYen(n) {
+  return '¥' + fmt(n);
+}
+
+function calcMonthlyPayment(principal, annualRate, months) {
+  if (principal <= 0 || months <= 0) return 0;
+  if (annualRate <= 0) return principal / months;
+  const r = annualRate / 100 / 12;
+  const pow = Math.pow(1 + r, months);
+  return principal * r * pow / (pow - 1);
+}
+
+function calculate() {
+  const totalCost = parseNum(document.getElementById('totalCost').value);
+  const interiorCost = parseNum(document.getElementById('interiorCost').value);
+  const otherCost = totalCost - interiorCost;
+  document.getElementById('otherCost').value = fmt(otherCost);
+
+  const rate = parseNum(document.getElementById('interestRate').value);
+  const monthlyRent = parseNum(document.getElementById('monthlyRent').value);
+  const monthlyExpense = parseNum(document.getElementById('monthlyExpense').value);
+  const monthlyRepairReserve = parseNum(document.getElementById('monthlyRepairReserve').value);
+  const vacancyRate = parseNum(document.getElementById('vacancyRate').value) / 100;
+  const rentIncrease = parseNum(document.getElementById('rentIncrease').value) / 100;
+
+  const loanA_months = 60;
+  const loanB_months = 240;
+  const monthlyA = calcMonthlyPayment(interiorCost, rate, loanA_months);
+  const monthlyB = calcMonthlyPayment(otherCost, rate, loanB_months);
+
+  // Loan summaries
+  const totalA = monthlyA * loanA_months;
+  const totalB = monthlyB * loanB_months;
+  document.getElementById('loanA_amount').textContent = fmtYen(interiorCost);
+  document.getElementById('loanA_rate').textContent = rate;
+  document.getElementById('loanA_monthly').textContent = fmtYen(monthlyA);
+  document.getElementById('loanA_total').textContent = fmtYen(totalA);
+  document.getElementById('loanA_interest').textContent = fmtYen(totalA - interiorCost);
+  document.getElementById('loanB_amount').textContent = fmtYen(otherCost);
+  document.getElementById('loanB_rate').textContent = rate;
+  document.getElementById('loanB_monthly').textContent = fmtYen(monthlyB);
+  document.getElementById('loanB_total').textContent = fmtYen(totalB);
+  document.getElementById('loanB_interest').textContent = fmtYen(totalB - otherCost);
+
+  // Monthly amortization
+  const rMonthly = rate / 100 / 12;
+  let balA = interiorCost;
+  let balB = otherCost;
+  let cumCF = 0;
+
+  const monthlyData = [];
+  const annualData = [];
+  const amortData = [];
+
+  for (let year = 1; year <= 10; year++) {
+    let yrRent = 0, yrExp = 0, yrRepair = 0, yrRepayA = 0, yrRepayB = 0;
+    let yrPrinA = 0, yrIntA = 0, yrPrinB = 0, yrIntB = 0;
+    const currentRent = monthlyRent * Math.pow(1 + rentIncrease, year - 1);
+    const effectiveRent = currentRent * (1 - vacancyRate);
+
+    for (let m = 1; m <= 12; m++) {
+      const month = (year - 1) * 12 + m;
+      let payA = 0, payB = 0;
+      let intA = 0, intB = 0, prinA = 0, prinB = 0;
+
+      if (balA > 0 && month <= loanA_months) {
+        intA = balA * rMonthly;
+        prinA = monthlyA - intA;
+        if (prinA > balA) prinA = balA;
+        balA -= prinA;
+        if (balA < 1) balA = 0;
+        payA = prinA + intA;
+      }
+
+      if (balB > 0 && month <= loanB_months) {
+        intB = balB * rMonthly;
+        prinB = monthlyB - intB;
+        if (prinB > balB) prinB = balB;
+        balB -= prinB;
+        if (balB < 1) balB = 0;
+        payB = prinB + intB;
+      }
+
+      const totalRepay = payA + payB;
+      const totalOutflow = monthlyExpense + monthlyRepairReserve + totalRepay;
+      const cf = effectiveRent - totalOutflow;
+      cumCF += cf;
+
+      yrRent += effectiveRent;
+      yrExp += monthlyExpense;
+      yrRepair += monthlyRepairReserve;
+      yrRepayA += payA;
+      yrRepayB += payB;
+      yrPrinA += prinA;
+      yrIntA += intA;
+      yrPrinB += prinB;
+      yrIntB += intB;
+
+      if (year <= 5) {
+        monthlyData.push({
+          label: `${year}年${m}月`,
+          rent: effectiveRent,
+          expense: monthlyExpense,
+          repairReserve: monthlyRepairReserve,
+          payA, payB,
+          totalRepay,
+          cf, cumCF
+        });
+      }
+    }
+
+    annualData.push({
+      year,
+      rent: yrRent,
+      expense: yrExp,
+      repairReserve: yrRepair,
+      repayA: yrRepayA,
+      repayB: yrRepayB,
+      totalRepay: yrRepayA + yrRepayB,
+      cf: yrRent - yrExp - yrRepair - yrRepayA - yrRepayB,
+      cumCF
+    });
+
+    amortData.push({
+      year,
+      prinA: yrPrinA, intA: yrIntA, balA,
+      prinB: yrPrinB, intB: yrIntB, balB,
+      totalRepay: yrRepayA + yrRepayB
+    });
+  }
+
+  // Summary cards
+  const initialMonthlyRepay = monthlyA + monthlyB;
+  const initialCF = monthlyRent * (1 - vacancyRate) - monthlyExpense - monthlyRepairReserve - initialMonthlyRepay;
+  document.getElementById('s_monthly_cf').textContent = fmtYen(initialCF);
+  document.getElementById('s_monthly_cf').className = 'value ' + (initialCF >= 0 ? 'positive' : 'negative');
+  document.getElementById('s_monthly_repay').textContent = fmtYen(initialMonthlyRepay);
+  const repayRatio = (initialMonthlyRepay / (monthlyRent * (1 - vacancyRate)) * 100);
+  document.getElementById('s_dscr').textContent = repayRatio.toFixed(1) + '%';
+  document.getElementById('s_dscr').className = 'value ' + (repayRatio <= 50 ? 'positive' : repayRatio <= 70 ? '' : 'negative');
+  document.getElementById('s_total_cf').textContent = fmtYen(cumCF);
+  document.getElementById('s_total_cf').className = 'value ' + (cumCF >= 0 ? 'positive' : 'negative');
+
+  // Annual table
+  const annualBody = document.getElementById('annualBody');
+  annualBody.innerHTML = '';
+  annualData.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${d.year}年目</td>
+      <td>${fmtYen(d.rent)}</td>
+      <td>${fmtYen(d.expense)}</td>
+      <td>${fmtYen(d.repairReserve)}</td>
+      <td>${d.repayA > 0 ? fmtYen(d.repayA) : '-'}</td>
+      <td>${fmtYen(d.repayB)}</td>
+      <td>${fmtYen(d.totalRepay)}</td>
+      <td class="${d.cf >= 0 ? 'positive' : 'negative'}">${fmtYen(d.cf)}</td>
+      <td class="${d.cumCF >= 0 ? 'positive' : 'negative'}">${fmtYen(d.cumCF)}</td>
+    `;
+    annualBody.appendChild(tr);
+  });
+
+  // Monthly table
+  const monthlyBody = document.getElementById('monthlyBody');
+  monthlyBody.innerHTML = '';
+  monthlyData.forEach((d, i) => {
+    const tr = document.createElement('tr');
+    if ((i + 1) % 12 === 0) tr.className = 'year-total';
+    tr.innerHTML = `
+      <td>${d.label}</td>
+      <td>${fmtYen(d.rent)}</td>
+      <td>${fmtYen(d.expense)}</td>
+      <td>${fmtYen(d.repairReserve)}</td>
+      <td>${d.payA > 0 ? fmtYen(d.payA) : '-'}</td>
+      <td>${fmtYen(d.payB)}</td>
+      <td>${fmtYen(d.totalRepay)}</td>
+      <td class="${d.cf >= 0 ? 'positive' : 'negative'}">${fmtYen(d.cf)}</td>
+      <td class="${d.cumCF >= 0 ? 'positive' : 'negative'}">${fmtYen(d.cumCF)}</td>
+    `;
+    monthlyBody.appendChild(tr);
+  });
+
+  // Amortization table
+  const amortBody = document.getElementById('amortBody');
+  amortBody.innerHTML = '';
+  amortData.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${d.year}年目</td>
+      <td>${d.prinA > 0 ? fmtYen(d.prinA) : '-'}</td>
+      <td>${d.intA > 0 ? fmtYen(d.intA) : '-'}</td>
+      <td>${d.balA > 0 ? fmtYen(d.balA) : '-'}</td>
+      <td>${fmtYen(d.prinB)}</td>
+      <td>${fmtYen(d.intB)}</td>
+      <td>${fmtYen(d.balB)}</td>
+      <td>${fmtYen(d.totalRepay)}</td>
+    `;
+    amortBody.appendChild(tr);
+  });
+
+  // Chart
+  drawChart(annualData);
+}
+
+let chartInstance = null;
+function drawChart(data) {
+  const ctx = document.getElementById('cfChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.year + '年目'),
+      datasets: [
+        {
+          label: '年間CF',
+          data: data.map(d => Math.round(d.cf)),
+          backgroundColor: data.map(d => d.cf >= 0 ? 'rgba(39,174,96,0.7)' : 'rgba(231,76,60,0.7)'),
+          borderRadius: 4,
+          order: 2
+        },
+        {
+          label: '累計CF',
+          data: data.map(d => Math.round(d.cumCF)),
+          type: 'line',
+          borderColor: '#3498db',
+          backgroundColor: 'rgba(52,152,219,0.1)',
+          borderWidth: 3,
+          pointBackgroundColor: '#3498db',
+          pointRadius: 5,
+          fill: false,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ctx.dataset.label + ': ¥' + ctx.parsed.y.toLocaleString('ja-JP');
+            }
+          }
+        },
+        legend: { position: 'top' }
+      },
+      scales: {
+        y: {
+          ticks: {
+            callback: v => '¥' + (v / 10000).toFixed(0) + '万'
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// Format input on change
+document.querySelectorAll('.input-grid input:not([readonly])').forEach(input => {
+  input.addEventListener('change', () => {
+    if (!input.value.includes('%')) {
+      const v = parseNum(input.value);
+      if (input.id === 'interestRate' || input.id === 'vacancyRate' || input.id === 'rentIncrease') {
+        input.value = v;
+      } else {
+        input.value = fmt(v);
+      }
+    }
+  });
+});
+
+// Set date
+document.getElementById('createdDate').textContent = new Date().toLocaleDateString('ja-JP');
+
+// Initial calculation
+calculate();
+</script>
+</body>
+</html>
